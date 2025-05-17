@@ -18,7 +18,7 @@ void* serial_reader_thread(void* arg) {
 
         bytes_read = read(si->fd, &byte, 1);
         if (bytes_read <= 0) continue;
-        
+        //printf("%c", byte);
         switch (state) {
             case SEARCH_START1:
                 if (byte == START1) {
@@ -102,16 +102,58 @@ int serial_open(SerialInterface* si, const char* dev_path, int baud_rate, void (
     for(size_t i = 0; i < 32; i++)
         buff[i] = START2;
 
-    serial_write(si, buff, 32);
+    serial_write(si, buff, 32, false);
+
+    meshtastic_ToRadio msg = meshtastic_ToRadio_init_default;
+    srand(time(NULL));
+    uint32_t configId = ((uint32_t)rand() << 16) | (uint32_t)rand();
+    // Ensure it doesn't match the reserved value
+    if (configId == NODELESS_WANT_CONFIG_ID) {
+        configId++;
+    }
+
+    msg.want_config_id = configId;
+    int result = send_to_radio(si, &msg);
+    if (result != 0) {
+        fprintf(stderr, "Failed to send message (code: %d)\n", result);
+    }
 
     return 0;
 }
 
-void serial_write(SerialInterface* si, uint8_t *buffer, size_t len)
+int serial_write(SerialInterface* si, uint8_t *buffer, size_t len, bool header)
 {
-    write(si->fd, buffer, len);
+        // Create protocol header
+    size_t bytes_written;
+    uint8_t header_buff[HEADER_SIZE] = {
+        START1,
+        START2,
+        (uint8_t)((len >> 8) & 0xFF), // High byte
+        (uint8_t)(len & 0xFF)         // Low byte
+    };
+
+    if(header)
+    {
+        // Write header and payload
+        bytes_written = write(si->fd, header_buff, HEADER_SIZE);
+        if (bytes_written != HEADER_SIZE) {
+            printf("Header write failed\n");
+            free(buffer);
+            return -1;
+        }
+    }
+
+
+    bytes_written = write(si->fd, buffer, len);
+    if (bytes_written != len) {
+        printf("Payload write failed\n");
+        free(buffer);
+        return -2;
+    }
+
     fsync(si->fd);
     sleep(0.1);
+    return 0;
 }
 
 void serial_close(SerialInterface* si) {
@@ -124,15 +166,16 @@ void serial_close(SerialInterface* si) {
 
 int send_to_radio(SerialInterface* si, meshtastic_ToRadio *message) {
     // Serialize the protobuf message
-    uint8_t * buffer = (uint8_t*) malloc(meshtastic_ToRadio_size);
+    uint8_t *buffer = (uint8_t *)malloc(meshtastic_ToRadio_size);
     if (!buffer) {
         fprintf(stderr, "Memory allocation failed\n");
         return -1;
     }
 
     pb_ostream_t stream = pb_ostream_from_buffer(buffer, meshtastic_ToRadio_size);
-    bool status = pb_encode(&stream, meshtastic_ToRadio_fields, &message);
+    bool status = pb_encode(&stream, meshtastic_ToRadio_fields, message);
     size_t msg_len = stream.bytes_written;
+    printf("msg_len:%li max_size: %li errmsg:%s\n", stream.bytes_written, stream.max_size, stream.errmsg);
     /* Then just check for any errors.. */
     if (!status)
     {
@@ -140,48 +183,14 @@ int send_to_radio(SerialInterface* si, meshtastic_ToRadio *message) {
         free(buffer);
         return -2;
     }
-    // Create protocol header
-    uint8_t header[HEADER_SIZE] = {
-        START1,
-        START2,
-        (uint8_t)((msg_len >> 8) & 0xFF), // High byte
-        (uint8_t)(msg_len & 0xFF)         // Low byte
-    };
 
-
-    printf("Sending header: ");
-    for (int i = 0; i < HEADER_SIZE; i++) {
-        printf("%02x ", header[i]);
-    }
-    printf("\nPayload: ");
+    printf("Payload: ");
     for (size_t i = 0; i < msg_len; i++) {
         printf("%02x ", buffer[i]);
     }
     printf("\n");
 
-
-    // Write header and payload
-    ssize_t bytes_written = write(si->fd, header, HEADER_SIZE);
-    if (bytes_written != HEADER_SIZE) {
-        printf("Header write failed\n");
-        free(buffer);
-        return -3;
-    }
-
-    bytes_written = write(si->fd, buffer, msg_len);
-    if (bytes_written != (ssize_t)msg_len) {
-        printf("Payload write failed\n");
-        free(buffer);
-        return -4;
-    }
-
-    // // Ensure data is fully transmitted
-    // if (tcdrain(si->fd != 0) {
-    //     printf("Flush failed\n");
-    //     free(buffer);
-    //     return -5;
-    // }
-
+    serial_write(si, (uint8_t *)&buffer, msg_len, true);
     free(buffer);
     return 0;
 }

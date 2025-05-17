@@ -23,6 +23,8 @@
 #define MAX_LOG_SIZE 256
 #define READ_BUFFER_SIZE 1024
 
+#define NODELESS_WANT_CONFIG_ID 69420
+
 typedef struct {
     int fd; // File descriptor for serial port
     pthread_t reader_thread;
@@ -40,7 +42,7 @@ typedef struct {
 // Open serial port (returns 0 on success)
 int serial_open(SerialInterface* si, const char* dev_path, int baud_rate, void (*cb)(void *));
 
-void serial_write(SerialInterface* si, uint8_t *buffer, size_t len);
+int serial_write(SerialInterface* si, uint8_t *buffer, size_t len, bool header);
 
 int send_to_radio(SerialInterface* si, meshtastic_ToRadio *message);
 // Close serial port and cleanup
