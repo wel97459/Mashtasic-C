@@ -1,6 +1,3 @@
-[submodule "extern/firmware"]
-	path = extern/firmware
-	url = https://github.com/meshtastic/firmware.git
 [submodule "extern/protobufs"]
 	path = extern/protobufs
 	url = https://github.com/meshtastic/protobufs.git

@@ -58,3 +58,4 @@ Makefile
 e2e.log
 
 nanopb/**
+meshtastic/**
