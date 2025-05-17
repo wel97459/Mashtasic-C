@@ -6,15 +6,18 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror -g -O0")
 
+set(CMAKE_MODULE_PATH cmake)
 find_package(Nanopb REQUIRED)
 
-file(GLOB proto_sources extern/firmware/src/mesh/generated/meshtastic/*.cpp)
+file(GLOB proto_buf extern/protobufs/meshtastic/*.proto)
+nanopb_generate_cpp(TARGET proto ${proto_buf})
 
-include_directories(extern/firmware/src/mesh/generated/)
+
+# include_directories(extern/protobufs/meshtastic/*.proto)
 include_directories(include/)
 include_directories(/usr/local/include/nanopb)
 
-add_library(proto SHARED ${proto_sources} extern/proto-placeholers/placeholders.cpp)
+#add_library(proto SHARED ${proto_sources} extern/proto-placeholers/placeholders.cpp)
 
 file(GLOB sources src/*.cpp)
 add_executable(bar ${sources} )
