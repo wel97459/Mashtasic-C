@@ -4,3 +4,6 @@
 [submodule "extern/protobufs"]
 	path = extern/protobufs
 	url = https://github.com/meshtastic/protobufs.git
+[submodule "extern/nanopb"]
+	path = extern/nanopb
+	url = https://github.com/nanopb/nanopb.git
