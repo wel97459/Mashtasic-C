@@ -24,18 +24,39 @@ void packet_received(void* arg) {
     }
 }
 
+void testing(){
+    meshtastic_ToRadio msg = meshtastic_ToRadio_init_default;
+    msg.
+    uint8_t * buffer = (uint8_t*) malloc(1024);
+    pb_ostream_t stream = pb_ostream_from_buffer(buffer, 1024);
+    bool status = pb_encode(&stream, meshtastic_ToRadio_fields, &msg);
+    size_t msg_len = stream.bytes_written;
+
+    printf("Encoding failed: %s\n", PB_GET_ERROR(&stream));
+
+
+    printf("msg_len: %lu, Payload: \n", msg_len);
+    for (size_t i = 0; i < msg_len; i++) {
+        printf("%02x ", buffer[i]);
+    }
+    printf("\n");
+}
+
 int main() {
     SerialInterface iface;
     
-    if(serial_open(&iface, "/dev/ttyUSB0", B115200, &packet_received) != 0) {
-        fprintf(stderr, "Failed to initialize serial interface\n");
-        return 1;
-    }
+    // if(serial_open(&iface, "/dev/ttyUSB0", B115200, &packet_received) != 0) {
+    //     fprintf(stderr, "Failed to initialize serial interface\n");
+    //     return 1;
+    // }
 
-    while(1) {
-        sleep(1);
-    }
 
-    serial_close(&iface);
+    testing();
+
+    // while(1) {
+    //     sleep(1);
+    // }
+
+    // serial_close(&iface);
     return 0;
 }

@@ -56,3 +56,6 @@ CMakeCache.txt
 CMakeFiles
 Makefile
 e2e.log
+
+nanopb/**
+meshtastic/**
