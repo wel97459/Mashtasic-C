@@ -100,11 +100,13 @@ int serial_open(SerialInterface* si, const char* dev_path, int baud_rate, void (
 
     uint8_t buff[32];
     for(size_t i = 0; i < 32; i++)
-        buff[i] = START2;
+        buff[i] = START1;
 
     serial_write(si, buff, 32, false);
 
     meshtastic_ToRadio msg = meshtastic_ToRadio_init_default;
+    msg.which_payload_variant = meshtastic_ToRadio_want_config_id_tag;
+    
     srand(time(NULL));
     uint32_t configId = ((uint32_t)rand() << 16) | (uint32_t)rand();
     // Ensure it doesn't match the reserved value
