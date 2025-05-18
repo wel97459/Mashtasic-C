@@ -22,7 +22,6 @@ void* serial_reader_thread(void* arg) {
         switch (state) {
             case SEARCH_START1:
                 if (byte == START1) {
-                    printf("Start1\n");
                     state = SEARCH_START2;
                     si->packet_index = 0;
                     si->packet_buffer[si->packet_index++] = byte;
@@ -45,7 +44,6 @@ void* serial_reader_thread(void* arg) {
                 si->packet_buffer[si->packet_index++] = byte;
                 if (byte == START2) {
                     state = READ_HEADER;
-                    printf("Start2\n");
                 } else {
                     state = SEARCH_START1;
                 }
@@ -177,7 +175,6 @@ int send_to_radio(SerialInterface* si, meshtastic_ToRadio *message) {
     pb_ostream_t stream = pb_ostream_from_buffer(buffer, meshtastic_ToRadio_size);
     bool status = pb_encode(&stream, meshtastic_ToRadio_fields, message);
     size_t msg_len = stream.bytes_written;
-    printf("msg_len:%li max_size: %li errmsg:%s\n", stream.bytes_written, stream.max_size, stream.errmsg);
     /* Then just check for any errors.. */
     if (!status)
     {
@@ -186,11 +183,12 @@ int send_to_radio(SerialInterface* si, meshtastic_ToRadio *message) {
         return -2;
     }
 
-    printf("Payload: ");
-    for (size_t i = 0; i < msg_len; i++) {
-        printf("%02x ", buffer[i]);
-    }
-    printf("\n");
+    //printf("msg_len:%li max_size: %li errmsg:%s\n", stream.bytes_written, stream.max_size, stream.errmsg);
+    // printf("Payload: ");
+    // for (size_t i = 0; i < msg_len; i++) {
+    //     printf("%02x ", buffer[i]);
+    // }
+    // printf("\n");
 
     serial_write(si, buffer, msg_len, true);
     free(buffer);
