@@ -168,7 +168,7 @@ void serial_close(SerialInterface* si) {
 
 int send_to_radio(SerialInterface* si, meshtastic_ToRadio *message) {
     // Serialize the protobuf message
-    uint8_t *buffer = (uint8_t *)malloc(meshtastic_ToRadio_size);
+    uint8_t * buffer = (uint8_t *)malloc(meshtastic_ToRadio_size);
     if (!buffer) {
         fprintf(stderr, "Memory allocation failed\n");
         return -1;
@@ -192,7 +192,7 @@ int send_to_radio(SerialInterface* si, meshtastic_ToRadio *message) {
     }
     printf("\n");
 
-    serial_write(si, (uint8_t *)&buffer, msg_len, true);
+    serial_write(si, buffer, msg_len, true);
     free(buffer);
     return 0;
 }
