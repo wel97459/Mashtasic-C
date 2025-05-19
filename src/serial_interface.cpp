@@ -16,33 +16,35 @@ void* serial_reader_thread(void* arg) {
 
     while (si->running) {
 
-        bytes_read = read(si->fd, &byte, 1);
-        if (bytes_read <= 0) continue;
-        //printf("%c", byte);
         switch (state) {
             case SEARCH_START1:
-                if (byte == START1) {
+                bytes_read = read(si->fd, &si->packet_buffer[0], 1);
+                if (bytes_read <= 0) break;
+
+                if (si->packet_buffer[0] == START1) {
                     state = SEARCH_START2;
-                    si->packet_index = 0;
-                    si->packet_buffer[si->packet_index++] = byte;
+                    si->packet_index = 1;
                 } else {
                     // Handle log messages
-                    if (byte == '\r') continue;
+                    if (byte == '\r') break;
                     if (byte == '\n') {
                         si->log_buffer[si->log_index] = '\0';
                         handle_log((char*)si->log_buffer);
                         si->log_index = 0;
                     } else {
                         if (si->log_index < MAX_LOG_SIZE-1) {
-                            si->log_buffer[si->log_index++] = byte;
+                            si->log_buffer[si->log_index++] = si->packet_buffer[0];
                         }
                     }
                 }
                 break;
 
             case SEARCH_START2:
-                si->packet_buffer[si->packet_index++] = byte;
-                if (byte == START2) {
+                bytes_read = read(si->fd, &si->packet_buffer[1], 1);
+                if (bytes_read <= 0) break;
+
+                if (si->packet_buffer[1] == START2) {
+                    si->packet_index++;
                     state = READ_HEADER;
                 } else {
                     state = SEARCH_START1;
@@ -50,21 +52,31 @@ void* serial_reader_thread(void* arg) {
                 break;
 
             case READ_HEADER:
-                si->packet_buffer[si->packet_index++] = byte;
+                bytes_read = read(si->fd, &si->packet_buffer[si->packet_index], HEADER_SIZE - si->packet_index);
+                if (bytes_read <= 0) break;
+
+                si->packet_index += bytes_read;
                 if (si->packet_index == HEADER_SIZE) {
                     si->packet_length = (si->packet_buffer[2] << 8) | si->packet_buffer[3];
                     if (si->packet_length > MAX_PACKET_SIZE) {
+                        printf("packet length to big: %lu\n", si->packet_length);
                         state = SEARCH_START1;
                         break;
                     }
+                    printf("packet length: %lu\n", si->packet_length);
                     bytes_needed = si->packet_length;
                     state = READ_PAYLOAD;
                 }
                 break;
 
             case READ_PAYLOAD:
-                si->packet_buffer[si->packet_index++] = byte;
-                if (--bytes_needed == 0) {
+                bytes_read = read(si->fd, &si->packet_buffer[si->packet_index], bytes_needed);
+                if (bytes_read < 1) break;
+
+                si->packet_index += bytes_read;
+                bytes_needed -= bytes_read;
+                printf("bytes_needed: %li, bytes_read: %li\n", bytes_needed, bytes_read);
+                if (bytes_needed == 0) {
                     // Full packet received
                     si->packet_handler(si);
                     state = SEARCH_START1;
@@ -152,7 +164,7 @@ int serial_write(SerialInterface* si, uint8_t *buffer, size_t len, bool header)
     }
 
     fsync(si->fd);
-    sleep(0.1);
+    // sleep(0.1);
     return 0;
 }
 
@@ -183,12 +195,12 @@ int send_to_radio(SerialInterface* si, meshtastic_ToRadio *message) {
         return -2;
     }
 
-    //printf("msg_len:%li max_size: %li errmsg:%s\n", stream.bytes_written, stream.max_size, stream.errmsg);
-    // printf("Payload: ");
-    // for (size_t i = 0; i < msg_len; i++) {
-    //     printf("%02x ", buffer[i]);
-    // }
-    // printf("\n");
+    printf("msg_len:%li max_size: %li errmsg:%s\n", stream.bytes_written, stream.max_size, stream.errmsg);
+    printf("Payload: ");
+    for (size_t i = 0; i < msg_len; i++) {
+        printf("%02x ", buffer[i]);
+    }
+    printf("\n");
 
     serial_write(si, buffer, msg_len, true);
     free(buffer);
